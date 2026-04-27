@@ -1,4 +1,4 @@
-name: Publish Quizzam Image
+name: Publish Web API Image
 
 on:
   push:
@@ -11,7 +11,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/quizzam
+  IMAGE_NAME: ${{ github.repository_owner }}/web-api
 
 jobs:
   publish:
@@ -47,8 +47,8 @@ jobs:
             type=sha
             type=raw,value=latest,enable={{is_default_branch}}
           labels: |
-            org.opencontainers.image.title=quizzam
-            org.opencontainers.image.description=Quizzam NestJS API image
+            org.opencontainers.image.title=web-api
+            org.opencontainers.image.description=NestJS API image
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
       - name: Build and push image

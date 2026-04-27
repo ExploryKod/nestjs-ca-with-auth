@@ -3,7 +3,7 @@
   "$schema": "../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
   "implicitDependencies": [
-    "quizzam"
+    "web-api"
   ],
   "targets": {
     "e2e": {
@@ -16,7 +16,7 @@
         "passWithNoTests": true
       },
       "dependsOn": [
-        "quizzam:build"
+        "web-api:build"
       ]
     }
   }

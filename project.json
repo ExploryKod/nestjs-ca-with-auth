@@ -1,5 +1,5 @@
 {
-  "name": "quizzam",
+  "name": "web-api",
   "$schema": "node_modules/nx/schemas/project-schema.json",
   "includedScripts": [],
   "sourceRoot": "src",
@@ -24,21 +24,21 @@
         "executor": "@nx/js:node",
         "defaultConfiguration": "development",
         "options": {
-          "buildTarget": "quizzam:build"
+          "buildTarget": "web-api:build"
         },
         "configurations": {
           "development": {
-            "buildTarget": "quizzam:build:development"
+            "buildTarget": "web-api:build:development"
           },
           "production": {
-            "buildTarget": "quizzam:build:production"
+            "buildTarget": "web-api:build:production"
           }
         }
       },
       "test": {
         "executor": "@nx/jest:jest",
         "outputs": [
-          "{workspaceRoot}/coverage/quizzam"
+          "{workspaceRoot}/coverage/web-api"
         ],
         "options": {
           "jestConfig": "jest.config.ts",

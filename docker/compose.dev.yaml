@@ -1,23 +1,24 @@
 # Dev local dans Docker : API + services optionnels selon DATABASE_NAME (voir README).
 # MongoDB + mongo-express : profil « mongodb » (démarrés seulement si DATABASE_NAME=MONGODB).
-# Prérequis : quizzam/.env. Port API hôte : QUIZZAM_HOST_PORT (défaut 3002).
+# Prérequis : .env à la racine du projet. Port API hôte : API_HOST_PORT (défaut 3003 ; QUIZZAM_HOST_PORT
+# est encore accepté pour compatibilité).
 #
-# api-watch : le volume « quizzam_node_modules » isole node_modules (évite mélange hôte ↔ Linux conteneur).
+# api-watch : le volume « web_api_node_modules » isole node_modules (évite mélange hôte ↔ Linux conteneur).
 # À chaque démarrage, « pnpm install » est exécuté pour resynchroniser avec le package.json / pnpm-lock.yaml
-# montés depuis l’hôte. Le fichier quizzam/.npmrc définit confirm-modules-purge=false (sinon pnpm demande une
+# montés depuis l’hôte. Le fichier .npmrc à la racine définit confirm-modules-purge=false (sinon pnpm demande une
 # confirmation sans TTY et l’installation peut échouer ou laisser node_modules incomplet).
 #
 # Avec le script : ./start.sh (détecte DATABASE_NAME dans .env)
 # À la main (Mongo) : docker compose -f compose.dev.yaml --profile mongodb up --build -d
 # DATABASE_URL dans .env : voir .env.example (localhost vs hôte « mongodb » du réseau compose).
-name: quizzam-dev
+name: web-api-dev
 
 services:
   mongodb:
     profiles:
       - mongodb
     image: mongodb/mongodb-community-server:latest
-    container_name: quizzam-mongodb-dev
+    container_name: web-api-mongodb
     ports:
       - "27017:27017"
     restart: unless-stopped
@@ -30,7 +31,7 @@ services:
     profiles:
       - mongodb
     image: mongo-express:latest
-    container_name: quizzam-mongo-express-dev
+    container_name: web-api-mongo-express
     restart: unless-stopped
     ports:
       - "8086:8081"
@@ -43,26 +44,26 @@ services:
       - mongodb
 
   api:
-    container_name: quizzam-api
+    container_name: web-api
     build:
       context: ..
       dockerfile: docker/Dockerfile
       target: production
     ports:
-      - "${QUIZZAM_HOST_PORT:-3002}:3000"
+      - "${API_HOST_PORT:-${QUIZZAM_HOST_PORT:-3003}}:3000"
     env_file:
       - ../.env
     environment:
       PORT: "3000"
       NODE_ENV: production
       # Même valeur que le port hôte dans la section « ports » ci-dessus (pour les logs de l’app).
-      QUIZZAM_HOST_PORT: ${QUIZZAM_HOST_PORT:-3002}
+      API_HOST_PORT: ${API_HOST_PORT:-${QUIZZAM_HOST_PORT:-3003}}
     # Pas de depends_on mongodb : le profil mongodb peut être désactivé (FIREBASE / IN-MEMORY).
 
   api-watch:
     profiles:
       - watch
-    container_name: quizzam-api-watch
+    container_name: web-api-watch
     build:
       context: ..
       dockerfile: docker/Dockerfile
@@ -74,28 +75,35 @@ services:
     stdin_open: true
     tty: true
     ports:
-      - "${QUIZZAM_HOST_PORT:-3002}:3000"
+      - "${API_HOST_PORT:-${QUIZZAM_HOST_PORT:-3003}}:3000"
     env_file:
       - ../.env
     environment:
       PORT: "3000"
       NODE_ENV: development
-      QUIZZAM_HOST_PORT: ${QUIZZAM_HOST_PORT:-3002}
+      API_HOST_PORT: ${API_HOST_PORT:-${QUIZZAM_HOST_PORT:-3003}}
       CHOKIDAR_USEPOLLING: "true"
+      # Même principe que le Dockerfile : évite le daemon Nx (socket) dans le conteneur.
+      NX_DAEMON: "false"
+      NX_SOCKET_DIR: /tmp/nx
+      # Workers plugins isolés : échouent souvent dans Docker (« Failed to start plugin worker ») — voir Nx #30359 / #31829.
+      NX_ISOLATE_PLUGINS: "false"
       # pnpm: non-interactive install (with confirm-modules-purge in ../.npmrc) + avoid implicit --frozen-lockfile
       # from CI, so host package.json/lock can sync in the volume without failing when only one file changed.
       CI: "true"
     volumes:
       - ..:/usr/src/app
-      - quizzam_node_modules:/usr/src/app/node_modules
+      - web_api_node_modules:/usr/src/app/node_modules
     command: >
       sh -c "set -e;
       echo '[api-watch] pnpm install (sync with host package.json + lockfile in volume)...';
       pnpm install --no-frozen-lockfile;
+      echo '[api-watch] chown node_modules to user node (beaucoup de fichiers: souvent 1–3 min sans nouvelle ligne, c est normal)...';
       chown -R node:node /usr/src/app/node_modules;
-      exec runuser -u node -g node -w /usr/src/app -- node ./node_modules/nx/bin/nx.js serve quizzam"
+      echo '[api-watch] demarrage: nx serve web-api...';
+      exec runuser -u node -g node -- sh -c 'cd /usr/src/app && export NX_DAEMON=false NX_ISOLATE_PLUGINS=false NX_SOCKET_DIR=/tmp/nx && exec node ./node_modules/nx/bin/nx.js serve web-api'"
     # Service de dev : code monté depuis l'hôte + watcher Nest/Nx dans le conteneur.
 
 volumes:
   mongo_data:
-  quizzam_node_modules:
+  web_api_node_modules:

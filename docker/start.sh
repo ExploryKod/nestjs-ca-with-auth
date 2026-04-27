@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Stack dev Docker (compose.dev.yaml). MongoDB + mongo-express si DATABASE_NAME=MONGODB dans quizzam/.env.
-# Depuis quizzam :
+# Stack dev Docker (compose.dev.yaml). MongoDB + mongo-express si DATABASE_NAME=MONGODB dans le .env du projet.
+# Depuis la racine du repo :
 #   ./docker/start.sh          # ou ./docker/start.sh up
 #   ./docker/start.sh down     # arrête tout (y compris api-watch) + --remove-orphans
 #   ./docker/start.sh down -v  # idem + supprime les volumes (Mongo, node_modules vol., …)
@@ -14,16 +14,22 @@ set -Eeuo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_BASE="${PROJECT_DIR}/compose.dev.yaml"
-SERVICE_NAME="quizzam-mongodb-dev"
-API_NAME="quizzam-api"
+SERVICE_NAME="web-api-mongodb"
+API_NAME="web-api"
 MONGO_EXPRESS_PORT="8086"
 MONGO_URI_HOST="mongodb://localhost:27017"
 MONGO_URI_DOCKER="mongodb://mongodb:27017"
-QUIZZES_DUMP_FILE="${PROJECT_DIR}/dump/quiz.json"
 USERS_DUMP_FILE="${PROJECT_DIR}/dump/user.json"
-API_PORT="${QUIZZAM_HOST_PORT:-3002}"
+# API_HOST_PORT préféré ; QUIZZAM_HOST_PORT/QUIZZAM_FOLLOW_API_LOGS encore pris en charge.
+if [[ -z "${API_HOST_PORT:-}" && -n "${QUIZZAM_HOST_PORT:-}" ]]; then
+  API_HOST_PORT="${QUIZZAM_HOST_PORT}"
+fi
+API_PORT="${API_HOST_PORT:-3003}"
 API_LOGS_UP_COMMAND="docker compose -f compose.dev.yaml logs -f"
-FOLLOW_API_LOGS="${QUIZZAM_FOLLOW_API_LOGS:-1}"
+if [[ -z "${API_FOLLOW_LOGS:-}" && -n "${QUIZZAM_FOLLOW_API_LOGS:-}" ]]; then
+  API_FOLLOW_LOGS="${QUIZZAM_FOLLOW_API_LOGS}"
+fi
+FOLLOW_API_LOGS="${API_FOLLOW_LOGS:-1}"
 
 info()  { echo -e "ℹ️  $1"; }
 ok()    { echo -e "✅ $1"; }
@@ -144,32 +150,6 @@ case "$ACTION" in
     fi
     exit 0
     ;;
-  dump-quizzes)
-    shift || true
-    if [[ "$USE_MONGO" != true ]]; then
-      error "DATABASE_NAME must be MONGODB to import quizzes dump."
-      exit 1
-    fi
-    if [[ ! -f "$QUIZZES_DUMP_FILE" ]]; then
-      error "Dump file not found: $QUIZZES_DUMP_FILE"
-      exit 1
-    fi
-
-    info "Ensuring MongoDB container is running…"
-    if ! "${compose[@]}" -f "$COMPOSE_BASE" "${PROFILE_ARGS[@]}" up -d mongodb; then
-      error "Unable to start mongodb service"
-      exit 1
-    fi
-
-    info "Importing quizzes dump into quizapp.quizzes (drop + jsonArray)…"
-    if ! docker exec -i "$SERVICE_NAME" mongoimport --db quizapp --collection quizzes --jsonArray --drop < "$QUIZZES_DUMP_FILE"; then
-      error "mongoimport failed"
-      exit 1
-    fi
-
-    ok "Quizzes dump imported successfully into quizapp.quizzes."
-    exit 0
-    ;;
   dump-users)
     shift || true
     if [[ "$USE_MONGO" != true ]]; then
@@ -239,18 +219,18 @@ case "$ACTION" in
     ;;
   stop)
     shift || true
-    info "Stopping all quizzam containers (api, api-watch, mongodb, mongo-express if present)…"
+    info "Stopping all stack containers (api, api-watch, mongodb, mongo-express if present)…"
     # Activate both profiles so stop works whether stack was started via up or watch-up.
     if ! "${compose[@]}" -f "$COMPOSE_BASE" --profile watch --profile mongodb stop "$@"; then
       error "docker compose stop failed"
       exit 1
     fi
-    ok "All quizzam containers are stopped."
+    ok "All stack containers are stopped."
     exit 0
     ;;
   down)
     shift
-    info "Stopping quizzam dev stack (profils watch + mongodb si activé)…"
+    info "Stopping dev stack (profils watch + mongodb si activé)…"
     if [[ "$USE_MONGO" == true ]]; then
       info "Profils : watch + mongodb (API classique, api-watch, Mongo, mongo-express)."
     else
@@ -260,41 +240,40 @@ case "$ACTION" in
       error "docker compose down failed"
       exit 1
     fi
-    ok "Stack arrêtée (projet quizzam-dev) — conteneurs orphelins supprimés."
+    ok "Stack arrêtée (projet web-api-dev) — conteneurs orphelins supprimés."
     exit 0
     ;;
   -h|--help|help)
-    echo "Usage: $0 [up|stop|down|api-restart|api-stop|logs|watch-up|watch-stop|dump-quizzes|dump-users] [options]"
+    echo "Usage: $0 [up|stop|down|api-restart|api-stop|logs|watch-up|watch-stop|dump-users] [options]"
     echo ""
     echo "  up (default)   Démarre la stack (build si besoin)."
-    echo "  stop             Stoppe tous les conteneurs quizzam (up + watch-up), sans supprimer réseau/volumes."
+    echo "  stop             Stoppe tous les conteneurs de la stack (up + watch-up), sans supprimer réseau/volumes."
     echo "  down             Arrête tout (y compris api-watch), supprime le réseau, --remove-orphans."
-    echo "  down -v          Idem + supprime les volumes compose (Mongo, quizzam_node_modules, …)."
+    echo "  down -v          Idem + supprime les volumes compose (Mongo, web_api_node_modules, …)."
     echo "  api-restart      Redémarre API sans rebuild (et MongoDB si DATABASE_NAME=MONGODB)."
     echo "  api-stop         Stoppe API sans toucher aux images (et MongoDB si DATABASE_NAME=MONGODB)."
     echo "  logs             Suit les logs API uniquement."
     echo "  watch-up         Démarre API en mode watch (bind mount + hot reload dans le conteneur)."
     echo "  watch-stop       Stoppe API watch (et MongoDB si DATABASE_NAME=MONGODB)."
-    echo "  dump-quizzes     Importe docker/dump/quiz.json dans quizapp.quizzes (--drop --jsonArray)."
     echo "  dump-users       Importe docker/dump/user.json dans quizapp.users (--drop --jsonArray)."
     echo ""
-    echo "Depuis le dossier quizzam : ./docker/start.sh   ou   ./docker/start"
+    echo "Depuis le dossier docker/ (ou en passant le chemin) : ./start.sh   ou   ./start"
     exit 0
     ;;
   up|start)
     [[ -n "${1:-}" ]] && shift
     ;;
   *)
-    error "Commande inconnue : $ACTION — utilisation : $0 [up|stop|down|dump-quizzes|dump-users] (ou $0 --help)"
+    error "Commande inconnue : $ACTION — utilisation : $0 [up|stop|down|dump-users] (ou $0 --help)"
     exit 1
     ;;
 esac
 
 # ---------- up ----------
-info "Starting quizzam dev stack (API in Docker${USE_MONGO:+, MongoDB + mongo-express})…"
+info "Starting dev stack (API in Docker${USE_MONGO:+, MongoDB + mongo-express})…"
 
 if [[ ! -f "${PROJECT_DIR}/../.env" ]]; then
-  warn "quizzam/.env missing — copy .env.example to .env (JWT_SECRET, etc.) before the API can run correctly."
+  warn "Project .env missing — copy .env.example to .env (JWT_SECRET, etc.) before the API can run correctly."
 fi
 
 if [[ "$USE_MONGO" == true ]]; then
@@ -357,10 +336,10 @@ docker logs "$API_NAME" --tail 15 2>/dev/null || warn "API container not logging
 
 echo ""
 echo "----------------------------------"
-ok "Quizzam dev stack is running"
+ok "Dev stack is running"
 echo ""
 echo "📂 Arrêt : ./docker/start.sh down"
-echo "📂 Next start from quizzam:"
+echo "📂 Prochaine fois :"
 echo "   ./docker/start.sh"
 echo ""
 if [[ "$USE_MONGO" == true ]]; then
@@ -396,5 +375,5 @@ if [[ "${FOLLOW_API_LOGS,,}" == "1" || "${FOLLOW_API_LOGS,,}" == "true" || "${FO
     "${compose[@]}" -f "$COMPOSE_BASE" logs -f api
   fi
 else
-  info "Live API log follow disabled (set QUIZZAM_FOLLOW_API_LOGS=1 to enable)."
+  info "Live API log follow disabled (set API_FOLLOW_LOGS=1 or QUIZZAM_FOLLOW_API_LOGS=1 to enable)."
 fi

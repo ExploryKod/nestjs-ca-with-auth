@@ -17,9 +17,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 
 import { UserModule } from '../users/user.module';
 import { CommonModule } from './common.module';
-import { QuizModule } from '../quiz/quiz.module';
 import { AppController } from './app.controller';
-import { ChatModule } from '../chat/chat.module';
 import { variables } from '../shared/variables.config';
 
 const baseImports = [
@@ -27,8 +25,6 @@ const baseImports = [
   AuthModule,
   UserModule,
   CommonModule,
-  QuizModule,
-  ChatModule,
 ];
 
 const mongooseRoot =

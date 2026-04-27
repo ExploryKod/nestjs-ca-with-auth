@@ -1,6 +1,6 @@
-# Quizzam
+# Web API
 
-NestJS API for quiz content ([Nx](https://nx.dev) workspace).
+NestJS API (auth, users, health) — [Nx](https://nx.dev) workspace.
 
 *French version: [README.md](./README.md)*
 
@@ -28,9 +28,9 @@ Pick **one** path: run everything with Docker, or Node on your machine with Mong
 
 Always builds and runs the **API** from `docker/Dockerfile` via `docker/compose.dev.yaml`.
 
-**MongoDB + mongo-express** are started **only** when `DATABASE_NAME=MONGODB` in `quizzam/.env` (default in `.env.example`). With `FIREBASE`, `IN-MEMORY`, etc., those containers are not started, so you avoid running an empty Mongo stack.
+**MongoDB + mongo-express** are started **only** when `DATABASE_NAME=MONGODB` in the repo **`.env`** (default in `.env.example`). With `FIREBASE`, `IN-MEMORY`, etc., those containers are not started, so you avoid running an empty Mongo stack.
 
-1. From the **`quizzam`** directory, copy environment variables and adjust secrets:
+1. From the **repository root**, copy environment variables and adjust secrets:
 
    ```sh
    cp .env.example .env
@@ -48,7 +48,7 @@ Always builds and runs the **API** from `docker/Dockerfile` via `docker/compose.
 
    Same entry point: `./docker/start` (wrapper).
 
-   **Stop:** `./docker/start.sh down` — stops **everything** (classic API, **api-watch**, Mongo, mongo-express), removes the network and orphans (`--remove-orphans`). Previously, `down` without the `watch` profile could leave `quizzam-api-watch` running and the network “still in use”. Volumes (Mongo, `quizzam_node_modules`, …): `./docker/start.sh down -v`.
+   **Stop:** `./docker/start.sh down` — stops **everything** (classic API, **api-watch**, Mongo, mongo-express), removes the network and orphans (`--remove-orphans`). Previously, `down` without the `watch` profile could leave `web-api-watch` running and the network “still in use”. Volumes (Mongo, `web_api_node_modules`, …): `./docker/start.sh down -v`.
 
    **Fast API cycle (no image rebuild):**
    - `./docker/start.sh api-restart` (or `./docker/start.sh restart-api`): restarts API without rebuilding the image.
@@ -60,19 +60,18 @@ Always builds and runs the **API** from `docker/Dockerfile` via `docker/compose.
      - Disable this behavior: `QUIZZAM_FOLLOW_API_LOGS=0 ./docker/start.sh`.
 
    **Watch mode (dev inside container, no rebuild on each change):**
-   - `./docker/start.sh watch-up` (alias `dev-up`): starts `api-watch` with source bind mount (`quizzam` -> `/usr/src/app`) and Nest/Nx watcher inside the container.
+   - `./docker/start.sh watch-up` (alias `dev-up`): starts `api-watch` with source bind mount (repo -> `/usr/src/app`) and Nest/Nx watcher inside the container.
    - Container `node_modules` use a **Docker volume** (separate from the host): on **startup**, `pnpm install` runs so the tree matches the mounted `package.json` / `pnpm-lock.yaml`. The repo ships **`.npmrc`** (`confirm-modules-purge=false`) so pnpm does not prompt in a non-TTY session (otherwise the install can stop before packages are written). After you add or change a dependency on the host, **commit the lockfile**, then **restart** watch — you do not need to remove the volume every time.
-   - If the deps volume looks broken: `watch-stop` then `docker volume rm quizzam-dev_quizzam_node_modules` (or the name from `docker volume ls | grep quizzam`), then `watch-up`.
+   - If the deps volume looks broken: `watch-stop` then `docker volume rm web-api-dev_web_api_node_modules` (or the name from `docker volume ls | grep web-api`), then `watch-up`.
    - Code edits on the host are automatically reflected in the container (hot reload).
    - `./docker/start.sh watch-stop` (alias `dev-stop`): stops watch mode.
-   - `api-watch` runs **root** only for `pnpm install` (the `node_modules` named volume is root-owned by default) then **Nx** as user **`node`**. TTY: `docker exec -it quizzam-api-watch sh` (root) or `docker exec -it -u node quizzam-api-watch sh` for a `node` shell.
+   - `api-watch` runs **root** only for `pnpm install` (the `node_modules` named volume is root-owned by default) then **Nx** as user **`node`**. TTY: `docker exec -it web-api-watch sh` (root) or `docker exec -it -u node web-api-watch sh` for a `node` shell.
    - In watch mode, `api-watch` logs are tailed live at the end of the command.
 
-   **Demo quiz import (Mongo):**
-   - `./docker/start.sh dump-quizzes`: imports `docker/dump/quiz.json` into `quizapp.quizzes` with `--jsonArray --drop` (collection is replaced before import).
+   **Demo user import (Mongo):**
    - `./docker/start.sh dump-users`: imports `docker/dump/user.json` into `quizapp.users` with `--jsonArray --drop` (collection is replaced before import).
    - Demo login credentials:
-     - **email**: `demo-user@quizapp.local`
+     - **email**: `demo-user@example.local`
      - **password**: `password123`
    - To create another dump user, generate `passwordHash` with the same API algorithm (scrypt, `salt:hash` format):
    ```sh
@@ -98,14 +97,14 @@ Always builds and runs the **API** from `docker/Dockerfile` via `docker/compose.
 
    | Service | URL |
    | ------- | --- |
-   | API (REST prefix) | `http://localhost:3002/api` (default host port; override with `QUIZZAM_HOST_PORT`) |
-   | OpenAPI (Swagger UI) | `http://localhost:3002/api/docs` (same host port) |
+   | API (REST prefix) | `http://localhost:3003/api` (default host port; override with `API_HOST_PORT`) |
+   | OpenAPI (Swagger UI) | `http://localhost:3003/api/docs` (same host port) |
    | mongo-express | only if `DATABASE_NAME=MONGODB` — `http://localhost:8086` |
    | MongoDB (from host) | only if `DATABASE_NAME=MONGODB` — `mongodb://localhost:27017` / database `quizapp` |
 
    **mongo-express:** in dev, the UI does not ask for a password (`ME_CONFIG_BASICAUTH=false` in `compose.dev.yaml`). Without that, the image often defaults to HTTP Basic **admin** / **pass** for the web UI — only use that on a trusted local machine.
 
-With the Mongo profile, ensure ports **27017**, **3002** (or `QUIZZAM_HOST_PORT`), and **8086** are free.
+With the Mongo profile, ensure ports **27017**, **3003** (or `API_HOST_PORT`), and **8086** are free.
 
 **Logs (Mongo mode):** `cd docker && docker compose -f compose.dev.yaml --profile mongodb logs -f`
 
@@ -119,7 +118,7 @@ With the Mongo profile, ensure ports **27017**, **3002** (or `QUIZZAM_HOST_PORT`
 
 Use this when you prefer **not** to run the API in Docker. You still need a **MongoDB** instance the app can reach (local install, or Mongo only in Docker if you prefer).
 
-1. Install dependencies from **`quizzam`**:
+1. Install dependencies from the **repository root**:
 
    ```sh
    pnpm install
@@ -142,7 +141,7 @@ Use this when you prefer **not** to run the API in Docker. You still need a **Mo
 3. Run the API in dev (watch mode):
 
    ```sh
-   npx nx serve quizzam
+   npx nx serve web-api
    ```
 
 The app listens on `PORT` from `.env` (see `.env.example`; default **3000** unless you change it).
@@ -152,11 +151,11 @@ The app listens on `PORT` from `.env` (see `.env.example`; default **3000** unle
 ## Other commands
 
 ```sh
-npx nx build quizzam
+npx nx build web-api
 ```
 
 ```sh
-npx nx show project quizzam
+npx nx show project web-api
 ```
 
 [Running tasks in Nx](https://nx.dev/features/run-tasks)
@@ -165,16 +164,15 @@ npx nx show project quizzam
 
 Specs under `e2e/` call the base URL from **`HOST`** and **`PORT`** (see `e2e/src/constants.ts` and `e2e/src/support/test-setup.ts`), default **`http://localhost:3000`**.
 
-- **API already running** (often Docker with host port **`3002`**, from `QUIZZAM_HOST_PORT` in `docker/`) : do **not** start a second `npx nx serve` on the **same** port. Point tests at the container, e.g. `PORT=3002` (and `AUTH_TYPE=JWT` if needed) then `pnpm exec nx run e2e:e2e` — no extra process bound to that port.
-- For a **local** `nx serve` **while** Docker watch uses 3002, use a **different** free port (e.g. `3000` or `3010` in your Quizzam `.env`) and the **same** `PORT` when running e2e.
+- **API already running** (often Docker with host port **`3003`**, from `API_HOST_PORT` in `docker/`) : do **not** start a second `npx nx serve` on the **same** port. Point tests at the container, e.g. `PORT=3003` (and `AUTH_TYPE=JWT` if needed) then `pnpm exec nx run e2e:e2e` — no extra process bound to that port.
+- For a **local** `nx serve` **while** Docker watch uses 3003, use a **different** free port (e.g. `3000` or `3010` in your `.env`) and the **same** `PORT` when running e2e.
 
 ---
 
 ## API documentation
 
 - **Swagger (OpenAPI)** : interactive UI at `/api/docs` (see the *URLs* table for your port).
-- **Refactor / contract context** (monorepo, e.g. `GET /api/quiz/:id` and `id` in the body): [quizzy-front-renew-app/docs/refactor.md](../quizzy-front-renew-app/docs/refactor.md).
-- **Quizzam HTTP notes** (French): [docs/api.md](./docs/api.md).
+- **HTTP notes** (French): [docs/api.md](./docs/api.md).
 
 ---
 

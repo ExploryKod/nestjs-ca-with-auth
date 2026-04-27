@@ -9,7 +9,7 @@ import { IsString, MinLength } from 'class-validator';
 export class CreateUserProfileBodyDto {
   @ApiProperty({
     example: 'amaury',
-    description: 'Public username displayed in quiz application.',
+    description: 'Public display name for the authenticated user.',
     minLength: 1,
   })
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))

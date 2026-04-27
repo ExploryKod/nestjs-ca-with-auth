@@ -10,7 +10,6 @@ import {
 } from './ports/user-repository.interface';
 import { UsersController } from './controllers/users.controller';
 import { AddUsername } from './commands/add-username';
-import { CqrsModule } from '@nestjs/cqrs';
 import { CommonModule } from '../core/common.module';
 import { variables } from '../shared/variables.config';
 import { FirebaseUserRepository } from './adapters/firebase/firebase-user-repository';
@@ -47,7 +46,6 @@ const inMemoryAuthImports =
 
 @Module({
   imports: [
-    CqrsModule,
     CommonModule,
     ...mongoFeatureImports,
     ...inMemoryAuthImports,

@@ -1,6 +1,6 @@
 const FIREBASE_AUTH_TYPE = 'FIREBASE';
 const FIREBASE_DATABASE_NAME = 'FIREBASE';
-const DEFAULT_FIREBASE_KEY_PATH = 'src/assets/quizzam-firebase-key.json';
+const DEFAULT_FIREBASE_KEY_PATH = 'src/assets/web-api-firebase-key.json';
 
 function normalizeEnvValue(value?: string): string {
   return value?.trim().toUpperCase() ?? '';

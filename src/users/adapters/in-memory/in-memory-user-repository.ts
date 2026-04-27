@@ -11,7 +11,7 @@ export class InMemoryUserRepository implements IUserRepository {
 
   constructor(
     @Optional() private readonly jwtRegistry?: JwtInMemoryRegistry,
-    initialData?: User[]
+    @Optional() initialData?: User[]
   ) {
     if (initialData) {
       initialData.forEach((user: User) => {

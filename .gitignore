@@ -132,12 +132,12 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-quizzam
+web-api
 
 # Nx
 .nx
 
-src/assets/quizzam-firebase-key.json
+src/assets/web-api-firebase-key.json
 
 
 .nx/cache

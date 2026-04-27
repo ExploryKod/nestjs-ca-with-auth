@@ -19,7 +19,7 @@ export class AppController {
       'text/html': {
         schema: {
           type: 'string',
-          example: '<!doctype html><html><head><title>Quizzam API</title></head><body>...</body></html>',
+          example: '<!doctype html><html><head><title>NestJs Web Api</title></head><body>...</body></html>',
         },
       },
     },

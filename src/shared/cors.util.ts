@@ -24,15 +24,3 @@ export function getHttpCorsOrigin(): string | string[] {
     .map((s) => s.trim())
     .filter(Boolean);
 }
-
-/** Socket.IO `cors.origin` (quiz gateway). */
-export function getWebSocketCorsOrigin(): boolean | string | string[] {
-  if (isCorsOpenToAll()) {
-    return true;
-  }
-  const list = getCorsEnvRaw()
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return list.length === 1 ? list[0]! : list;
-}

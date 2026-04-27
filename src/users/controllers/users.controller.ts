@@ -29,7 +29,7 @@ import {
   UserProfileResponseDto,
 } from '../dto/user.dto';
 import { GetUserByIdQuery } from '../queries/get-user-by-id';
-import { DecodedToken } from '../../quiz/payloads';
+import { DecodedToken } from '../../auth/model/decoded-token.model';
 
 @ApiTags('users')
 @ApiBearerAuth()

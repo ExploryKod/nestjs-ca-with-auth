@@ -5,6 +5,7 @@ import { MainModule } from './core/main.module';
 import { variables } from './shared/variables.config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import type { Application } from 'express';
 import { join } from 'path';
 import { HttpExceptionBodyDto } from './core/dto/http-exception-body.dto';
 import { HttpValidationErrorDto } from './core/dto/http-validation-error.dto';
@@ -30,6 +31,13 @@ async function bootstrap() {
   app.setViewEngine('ejs');
   app.setGlobalPrefix(variables.globalPrefix);
 
+  // True site root (not under GLOBAL_PREFIX): send browsers to the API mount (e.g. /api).
+  const expressApp = app.getHttpAdapter().getInstance() as Application;
+  const apiMount = variables.globalPrefix.replace(/^\/+|\/+$/g, '') || 'api';
+  expressApp.get('/', (_req, res) => {
+    res.redirect(302, `/${apiMount}`);
+  });
+
   const openCors = isCorsOpenToAll();
   const corsOrigin = getHttpCorsOrigin();
 
@@ -43,10 +51,9 @@ async function bootstrap() {
   });
 
   const config = new DocumentBuilder()
-    .setTitle('Quizzam API')
-    .setDescription('Professeurs, Créer vos quiz et proposer-les à des étudiants via un code pour chaque quiz')
+    .setTitle('API')
+    .setDescription('NestJS API (auth, users, health checks).')
     .setVersion('1.0')
-    .addTag('quiz')
     .addBearerAuth(
       {
         type: 'http',
@@ -68,7 +75,7 @@ async function bootstrap() {
 
 
   await app.listen(variables.port);
-  console.log("\x1b[36m *************************************** \n 🌞 Hello in Quizzam API - Version 1.0.0 \n 🏡 Architecture : hexagonale \n *************************************** ");
+  console.log("\x1b[36m *************************************** \n 🌞 API - Version 1.0.0 \n 🏡 Architecture : hexagonale \n *************************************** ");
   const databaseAlternativeByCurrent: Record<string, string> = {
     MONGODB: 'FIREBASE',
     FIREBASE: 'MONGODB',

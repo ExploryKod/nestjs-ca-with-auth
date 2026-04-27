@@ -8,7 +8,7 @@ import {
 /**
  * Adaptateur Nest pour firebase-admin (SDK Google), enregistré depuis AuthModule.
  * Ce n’est pas un bounded context « Firebase » : c’est de l’infrastructure partagée
- * (auth Firebase + dépôts Firestore côté users/quiz quand DATABASE_NAME=FIREBASE).
+ * (auth Firebase + dépôts Firestore côté users quand DATABASE_NAME=FIREBASE).
  */
 const FIREBASE_DISABLED_ERROR =
   'Firebase Admin is disabled. Set AUTH_TYPE=FIREBASE and/or DATABASE_NAME=FIREBASE and configure FIREBASE_KEY_PATH to enable it.';
